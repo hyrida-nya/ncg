@@ -14,17 +14,25 @@ const groupController = {
         });
     },
     joinRoom: (socket, data, userId) => {
-        // data.id is the roomId
-        Member.add(data.id, userId, 'member', (err) => {
-            if (err) {
-                if (err.message === 'ALREADY_MEMBER') {
-                    socket.emit('group-error', 'You are already a member of this group!');
-                } else {
-                    socket.emit('group-error', 'Join failed!');
-                }
-            } else {
-                socket.emit('group-joined', data.id);
+        // First check if room exists
+        db.get("SELECT id FROM rooms WHERE id = ?", [data.id], (err, row) => {
+            if (err || !row) {
+                socket.emit('group-error', 'Group does not exist!');
+                return;
             }
+            
+            // Now add user
+            Member.add(data.id, userId, 'member', (err) => {
+                if (err) {
+                    if (err.message === 'ALREADY_MEMBER') {
+                        socket.emit('group-error', 'You are already a member of this group!');
+                    } else {
+                        socket.emit('group-error', 'Join failed!');
+                    }
+                } else {
+                    socket.emit('group-joined', data.id);
+                }
+            });
         });
     },
     getGroups: (userId, callback) => {
