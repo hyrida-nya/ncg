@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            document.getElementById('sendBtn').click();
+            window.sendMessage();
         }
     });
 
@@ -119,8 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = '/';
     });
 
-    const sendBtn = document.getElementById('sendBtn');
-    sendBtn.addEventListener('click', () => {
+    window.sendMessage = () => {
         const input = document.getElementById('input');
         const msg = input.value.trim();
         if (msg === '') return;
@@ -134,6 +133,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         socket.emit('chat message', chatData);
         input.value = '';
+        input.focus(); // Keep focus here!
+    };
+
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.addEventListener('click', () => {
+        window.sendMessage();
     });
 
     // Request group list
@@ -273,12 +278,7 @@ window.showAlert = function(msg) {
 }
 
 socket.on('group-error', (err) => {
-    // If the error is about membership, use an alert modal
-    if (err.includes('already a member')) {
-        window.showAlert(err);
-    } else {
-        showToast(err);
-    }
+    showToast(err);
 });
 
 socket.on('chat message', (data) => {
@@ -286,6 +286,7 @@ socket.on('chat message', (data) => {
         const messagesList = document.getElementById('messages');
         const item = document.createElement('li');
         item.className = `message ${data.user === username ? 'mine' : ''}`;
+        item.dataset.id = data.id; // Store ID
         
         // Escape the username to prevent XSS
         const escapedUser = data.user.replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -293,6 +294,33 @@ socket.on('chat message', (data) => {
         item.innerHTML = `<strong>${escapedUser}:</strong> ${data.message} <small style="display:block; font-size: 0.7rem; opacity: 0.7;">${data.time}</small>`;
         messagesList.appendChild(item);
         messagesList.scrollTop = messagesList.scrollHeight;
+    }
+});
+
+socket.on('older-messages', (rows) => {
+    const messagesList = document.getElementById('messages');
+    const scrollBottom = messagesList.scrollHeight - messagesList.scrollTop;
+    
+    rows.reverse().forEach(row => {
+        const item = document.createElement('li');
+        item.className = `message ${row.user === username ? 'mine' : ''}`;
+        item.dataset.id = row.id;
+        
+        const escapedUser = row.user.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        item.innerHTML = `<strong>${escapedUser}:</strong> ${row.message} <small style="display:block; font-size: 0.7rem; opacity: 0.7;">${row.timestamp}</small>`;
+        messagesList.prepend(item);
+    });
+
+    messagesList.scrollTop = messagesList.scrollHeight - scrollBottom;
+});
+
+document.getElementById('messages').addEventListener('scroll', function() {
+    if (this.scrollTop === 0) {
+        const firstMessage = document.querySelector('.message');
+        if (firstMessage) {
+            const oldestId = firstMessage.dataset.id;
+            socket.emit('load-history', { room: currentRoom, lastId: oldestId });
+        }
     }
 });
 
