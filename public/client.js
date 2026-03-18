@@ -267,7 +267,11 @@ socket.on('chat message', (data) => {
         const messagesList = document.getElementById('messages');
         const item = document.createElement('li');
         item.className = `message ${data.user === username ? 'mine' : ''}`;
-        item.innerHTML = `<strong>${data.user}:</strong> ${data.message} <small style="display:block; font-size: 0.7rem; opacity: 0.7;">${data.time}</small>`;
+        
+        // Escape the username to prevent XSS
+        const escapedUser = data.user.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        
+        item.innerHTML = `<strong>${escapedUser}:</strong> ${data.message} <small style="display:block; font-size: 0.7rem; opacity: 0.7;">${data.time}</small>`;
         messagesList.appendChild(item);
         messagesList.scrollTop = messagesList.scrollHeight;
     }

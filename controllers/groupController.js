@@ -5,10 +5,11 @@ const db = new sqlite3.Database('chat.db');
 
 const groupController = {
     createRoom: (socket, data, userId) => {
+        // Updated to include default avatar logic if needed, but the model now handles the INSERT default
         Room.findOrCreate(data.name, data.desc, (err, roomId) => {
             if (err) { socket.emit('group-error', 'Creation failed!'); return; }
             Member.add(roomId, userId, 'owner', () => {
-                socket.emit('group-created', { id: roomId, name: data.name, desc: data.desc });
+                socket.emit('group-created', { id: roomId, name: data.name, desc: data.desc, avatar_url: '/default-group.png' });
             });
         });
     },

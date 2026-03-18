@@ -30,7 +30,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('create-room', (data) => {
-        const username = socket.handshake.headers.cookie ? socket.handshake.headers.cookie.split('username=')[1].split(';')[0] : null;
+        const username = socket.handshake.headers.cookie ? socket.handshake.headers.cookie.split('; ').find(row => row.startsWith('username='))?.split('=')[1] : null;
         if (!username) return;
         User.findByUsername(username, (err, row) => {
             if (row) groupController.createRoom(socket, data, row.id);
@@ -38,7 +38,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('join-room-by-id', (data) => {
-        const username = socket.handshake.headers.cookie ? socket.handshake.headers.cookie.split('username=')[1].split(';')[0] : null;
+        const username = socket.handshake.headers.cookie ? socket.handshake.headers.cookie.split('; ').find(row => row.startsWith('username='))?.split('=')[1] : null;
         if (!username) return;
         User.findByUsername(username, (err, row) => {
             if (row) groupController.joinRoom(socket, data, row.id);
@@ -46,7 +46,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('get-my-groups', () => {
-        const username = socket.handshake.headers.cookie ? socket.handshake.headers.cookie.split('username=')[1].split(';')[0] : null;
+        const username = socket.handshake.headers.cookie ? socket.handshake.headers.cookie.split('; ').find(row => row.startsWith('username='))?.split('=')[1] : null;
         if (!username) return;
         User.findByUsername(username, (err, row) => {
             if (row) groupController.getGroups(row.id, (err, groups) => {
@@ -56,7 +56,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('update-group-settings', (data) => {
-        const username = socket.handshake.headers.cookie ? socket.handshake.headers.cookie.split('username=')[1].split(';')[0] : null;
+        const username = socket.handshake.headers.cookie ? socket.handshake.headers.cookie.split('; ').find(row => row.startsWith('username='))?.split('=')[1] : null;
         if (!username) return;
         User.findByUsername(username, (err, row) => {
             if (row) groupController.updateSettings(socket, data, row.id);
@@ -65,7 +65,7 @@ io.on('connection', (socket) => {
 
     socket.on('login', (data) => chatController.handleLogin(socket, data));
     socket.on('register', (data) => chatController.handleRegister(socket, data));
-    socket.on('chat message', (data) => chatController.saveMessage(data, io));
+    socket.on('chat message', (data) => chatController.saveMessage(socket, data, io));
 
     socket.on('disconnect', () => {
         console.log('A cat left the server.');

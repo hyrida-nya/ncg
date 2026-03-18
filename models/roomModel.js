@@ -15,7 +15,7 @@ const Room = {
             if (row) {
                 callback(null, row.id);
             } else {
-                db.run("INSERT INTO rooms (name, description) VALUES (?, ?)", [name, desc], function(err) {
+                db.run("INSERT INTO rooms (name, description, avatar_url) VALUES (?, ?, ?)", [name, desc, '/default-group.png'], function(err) {
                     if (err) callback(err);
                     else callback(null, this.lastID);
                 });

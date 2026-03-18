@@ -60,7 +60,10 @@ const chatController = {
             });
         });
     },
-    saveMessage: (data, io) => {
+    saveMessage: (socket, data, io) => {
+        const username = socket.handshake.headers.cookie ? socket.handshake.headers.cookie.split('; ').find(row => row.startsWith('username='))?.split('=')[1] : null;
+        if (!username) return;
+
         if (!data.message || data.message.trim() === '') return;
         if (data.message.length > 500) {
             data.message = data.message.substring(0, 500); 
@@ -68,8 +71,8 @@ const chatController = {
         const sanitizedMessage = data.message.replace(/</g, "&lt;").replace(/>/g, "&gt;");
         
         Room.findOrCreate(data.room, (err, roomId) => {
-            Message.save(data.user, sanitizedMessage, data.time, roomId, () => {
-                io.to(data.room).emit('chat message', { ...data, message: sanitizedMessage });
+            Message.save(username, sanitizedMessage, data.time, roomId, () => {
+                io.to(data.room).emit('chat message', { ...data, user: username, message: sanitizedMessage });
             });
         });
     }
