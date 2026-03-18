@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NCG Chat Room</title>
+    <script type="module" src="https://esm.run/@material/web/all.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; background-color: #f0f2f5; margin: 0; }
+        
+        /* Sidebar */
+        #sidebar { width: 250px; background: #fff; border-right: 1px solid #ddd; padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+        .group-item { padding: 10px; cursor: pointer; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; min-width: 0; }
+        .group-item:hover { background: #f0f0f0; }
+        .group-item.active { background: #e0e0e0; font-weight: bold; }
+        .dots-btn { cursor: pointer; font-weight: bold; padding: 5px; flex-shrink: 0; display: inline-block; width: 20px; }
+        
+        /* Chat Area */
+        .chat-main { flex-grow: 1; display: flex; flex-direction: column; padding: 1.5rem; }
+        #messages { list-style: none; padding: 0; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 1rem; border-bottom: 1px solid #eee; }
+        .message { padding: 8px 12px; border-radius: 15px; max-width: 80%; background-color: #e4e6eb; word-wrap: break-word; }
+        .message.mine { align-self: flex-end; background-color: #0084ff; color: white; }
+        .input-area { display: flex; gap: 0.5rem; align-items: center; }
+        #input { flex-grow: 1; }
+        
+        /* Modal Styles */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; overflow-y: auto; }
+        .modal-content { background: white; padding: 2rem; border-radius: 16px; text-align: center; display: flex; flex-direction: column; gap: 15px; width: 350px; max-height: 90vh; overflow-y: auto; }
+        .modal-content header { display: flex; justify-content: center; gap: 10px; margin-bottom: 1rem; }
+        
+        /* Toast Styles */
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: white; padding: 12px 20px; border-radius: 8px; z-index: 2000; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Consistent Modal Layout */
+        #createSection, #joinSection { display: flex; flex-direction: column; gap: 10px; }
+        md-outlined-text-field { width: 100%; }
+        .modal-content md-filled-button, .modal-content md-text-button { align-self: center; min-width: 100px; }
+        
+        .tab-active { background-color: #e0e0e0; }
+        #cropModal .modal-content { width: 600px; }
+        #cropImage { max-width: 100%; max-height: 60vh; }
+    </style>
+</head>
+<body>
+    <div id="toastContainer"></div>
+    
+    <!-- Modal for Create/Join -->
+    <div id="joinModal" class="modal">
+        <div class="modal-content">
+            <header>
+                <md-text-button id="createTabBtn" class="tab-active" onclick="showCreate()">Create</md-text-button>
+                <md-text-button id="joinTabBtn" onclick="showJoin()">Join</md-text-button>
+            </header>
+            <div id="createSection">
+                <h3>Create Group</h3>
+                <md-outlined-text-field id="newRoomName" label="Group Name"></md-outlined-text-field>
+                <md-outlined-text-field id="newRoomDesc" label="Description"></md-outlined-text-field>
+                <md-filled-button onclick="createNewGroup()">Create</md-filled-button>
+            </div>
+            <div id="joinSection" style="display:none;">
+                <h3>Join Group</h3>
+                <md-outlined-text-field id="joinRoomId" label="Group ID"></md-outlined-text-field>
+                <md-filled-button onclick="joinGroupById()">Join</md-filled-button>
+            </div>
+            <md-text-button onclick="closeJoinModal()">Cancel</md-text-button>
+        </div>
+    </div>
+
+    <!-- Modal for Manage Group -->
+    <div id="manageModal" class="modal">
+        <div class="modal-content" style="width: 450px;">
+            <div style="display: flex; gap: 15px; align-items: flex-start;">
+                <div style="position: relative; width: 80px; height: 80px;">
+                    <div id="groupAvatarContainer" style="width: 80px; height: 80px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 32px; color: white; font-weight: bold;"></div>
+                    <button id="avatarEditBtn" style="position: absolute; top: -5px; right: -5px; width: 25px; height: 25px; border-radius: 50%; border: none; background: #555; color: white; cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 12px;" onclick="document.getElementById('groupAvatarInput').click()">✎</button>
+                </div>
+                <div style="flex: 1; text-align: left;">
+                    <h3 id="manageTitle" style="margin-top: 0;">Manage Group</h3>
+                    <p style="margin: 5px 0;"><strong>Group ID:</strong> <span id="groupIdDisplay"></span></p>
+                    <p style="margin: 5px 0;"><strong>Description:</strong> <span id="descDisplay"></span></p>
+                </div>
+                <md-text-button id="editBtn" onclick="toggleEditMode()">Edit</md-text-button>
+            </div>
+            <md-outlined-text-field id="descInput" label="New Description" style="display:none;"></md-outlined-text-field>
+            <input type="file" id="groupAvatarInput" style="display:none;" accept="image/*">
+            <button id="saveBtn" style="display: none; padding: 10px; cursor: pointer;" onclick="updateGroupSettings()">Save Changes</button>
+            <md-text-button onclick="closeManageModal()">Close</md-text-button>
+        </div>
+    </div>
+
+    <!-- Modal for Crop Image -->
+    <div id="cropModal" class="modal">
+        <div class="modal-content" style="width: 500px;">
+            <h3>Crop Avatar</h3>
+            <img id="cropImage" src="" alt="Crop preview">
+            <div style="margin-top: 15px;">
+                <md-filled-button onclick="saveCroppedImage()">Apply Crop</md-filled-button>
+                <md-text-button onclick="closeCropModal()">Cancel</md-text-button>
+            </div>
+        </div>
+    </div>
+
+    <aside id="sidebar">
+        <h3>Groups <md-icon-button id="addRoomBtn" onclick="openJoinModal()">+</md-icon-button></h3>
+        <div id="groupList">
+        </div>
+    </aside>
+
+    <main class="chat-main">
+        <header style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 id="roomTitle">NCG Chat: general</h2>
+            <md-text-button id="logoutBtn">Logout</md-text-button>
+        </header>
+        <ul id="messages"></ul>
+        <div class="input-area">
+            <md-outlined-text-field id="input" label="Type your message..."></md-outlined-text-field>
+            <md-filled-button id="sendBtn">Send</md-filled-button>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+    <script>
+        document.getElementById('groupAvatarInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const container = document.getElementById('groupAvatarContainer');
+                    container.innerHTML = '';
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.width = '80px';
+                    img.style.height = '80px';
+                    img.style.borderRadius = '8px';
+                    container.appendChild(img);
+                    container.style.background = 'transparent';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function closeModal() { document.getElementById('alertModal').style.display = 'none'; }
+        function openJoinModal() { document.getElementById('joinModal').style.display = 'flex'; }
+        function closeJoinModal() { document.getElementById('joinModal').style.display = 'none'; }
+        function showCreate() { 
+            document.getElementById('createSection').style.display = 'flex'; 
+            document.getElementById('joinSection').style.display = 'none'; 
+            document.getElementById('createTabBtn').classList.add('tab-active');
+            document.getElementById('joinTabBtn').classList.remove('tab-active');
+        }
+        function showJoin() { 
+            document.getElementById('createSection').style.display = 'none'; 
+            document.getElementById('joinSection').style.display = 'flex'; 
+            document.getElementById('createTabBtn').classList.remove('tab-active');
+            document.getElementById('joinTabBtn').classList.add('tab-active');
+        }
+        function openManageModal(room, id, desc, avatarUrl) { 
+            document.getElementById('manageTitle').textContent = `Manage Group: ${room}`;
+            document.getElementById('groupIdDisplay').textContent = id;
+            document.getElementById('descDisplay').textContent = desc;
+            
+            const container = document.getElementById('groupAvatarContainer');
+            container.innerHTML = '';
+            
+            if (avatarUrl && avatarUrl !== '/default-group.png') {
+                const img = document.createElement('img');
+                img.src = avatarUrl;
+                img.style.width = '80px';
+                img.style.height = '80px';
+                img.style.borderRadius = '8px';
+                container.appendChild(img);
+                container.style.background = 'transparent';
+            } else {
+                container.textContent = room.charAt(0).toUpperCase();
+                const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+                container.style.background = colors[room.length % colors.length];
+            }
+            
+            document.getElementById('manageModal').style.display = 'flex'; 
+        }
+        function closeManageModal() { 
+            document.getElementById('manageModal').style.display = 'none';
+            document.getElementById('descInput').style.display = 'none';
+            document.getElementById('descDisplay').style.display = 'block';
+            document.getElementById('saveBtn').style.display = 'none';
+            document.getElementById('editBtn').textContent = 'Edit';
+        }
+        function toggleEditMode() {
+            const input = document.getElementById('descInput');
+            const display = document.getElementById('descDisplay');
+            const pencilBtn = document.getElementById('avatarEditBtn');
+            
+            if (input.style.display === 'none') {
+                input.value = display.textContent;
+                input.style.display = 'block';
+                display.style.display = 'none';
+                pencilBtn.style.display = 'flex';
+                document.getElementById('saveBtn').style.display = 'block';
+                document.getElementById('editBtn').textContent = 'Cancel';
+            } else {
+                input.style.display = 'none';
+                display.style.display = 'block';
+                pencilBtn.style.display = 'none';
+                document.getElementById('saveBtn').style.display = 'none';
+                document.getElementById('editBtn').textContent = 'Edit';
+            }
+        }
+    </script>
+</body>
+</html>
