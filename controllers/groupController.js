@@ -46,31 +46,24 @@ const groupController = {
     updateSettings: (socket, data, userId) => {
         Member.getRole(data.roomId, userId, (err, row) => {
             if (row && (row.role === 'owner' || row.role === 'admin')) {
-                let query = "UPDATE rooms SET description = ?";
-                let params = [data.desc];
-                if (data.avatarUrl) {
-                    query += ", avatar_url = ?";
-                    params.push(data.avatarUrl);
-                }
-                query += " WHERE id = ?";
-                params.push(data.roomId);
-                
-                db.run(query, params, (err) => {
-                    if (err) socket.emit('group-error', 'Update failed!');
-                    else {
-                        socket.emit('group-settings-updated', 'Group settings updated!');
-                        socket.nsp.emit('groups-updated');
+                // Get old avatar first
+                db.get("SELECT avatar_url FROM rooms WHERE id = ?", [data.roomId], (err, roomRow) => {
+                    let oldAvatar = roomRow ? roomRow.avatar_url : null;
+                    
+                    let query = "UPDATE rooms SET description = ?";
+                    let params = [data.desc];
+                    if (data.avatarUrl) {
+                        query += ", avatar_url = ?";
+                        params.push(data.avatarUrl);
                     }
-                });
-            } else {
-                socket.emit('group-error', 'Forbidden: Only owners/admins can change settings!');
-            }
-        });
-    }
-};
-
-module.exports = groupController;
-ed');
+                    query += " WHERE id = ?";
+                    params.push(data.roomId);
+                    
+                    db.run(query, params, (err) => {
+                        if (err) socket.emit('group-error', 'Update failed!');
+                        else {
+                            socket.emit('group-settings-updated', 'Group settings updated!');
+                            socket.nsp.emit('groups-updated');
                             
                             // Cleanup old file
                             if (data.avatarUrl && oldAvatar && oldAvatar !== '/default-group.png') {
