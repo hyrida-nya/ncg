@@ -148,6 +148,8 @@ window.createNewGroup = function() {
     const desc = document.getElementById('newRoomDesc').value.trim();
     if (!name) return;
     socket.emit('create-room', { name, desc });
+    document.getElementById('newRoomName').value = '';
+    document.getElementById('newRoomDesc').value = '';
 }
 
 // UI: Join Group
@@ -155,6 +157,7 @@ window.joinGroupById = function() {
     const id = document.getElementById('joinRoomId').value.trim();
     if (!id) return;
     socket.emit('join-room-by-id', { id });
+    document.getElementById('joinRoomId').value = '';
 }
 
 let cropper;
@@ -258,8 +261,24 @@ socket.on('group-joined', (roomId) => {
     showToast("Joined group ID: " + roomId);
 });
 
+window.showAlert = function(msg) {
+    const modal = document.getElementById('alertModal');
+    const msgEl = document.getElementById('alertMessage'); // Assuming this exists
+    if (modal && msgEl) {
+        msgEl.textContent = msg;
+        modal.style.display = 'flex';
+    } else {
+        alert(msg); // Fallback
+    }
+}
+
 socket.on('group-error', (err) => {
-    showToast(err);
+    // If the error is about membership, use an alert modal
+    if (err.includes('already a member')) {
+        window.showAlert(err);
+    } else {
+        showToast(err);
+    }
 });
 
 socket.on('chat message', (data) => {

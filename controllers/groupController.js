@@ -16,8 +16,15 @@ const groupController = {
     joinRoom: (socket, data, userId) => {
         // data.id is the roomId
         Member.add(data.id, userId, 'member', (err) => {
-            if (err) socket.emit('group-error', 'Join failed!');
-            else socket.emit('group-joined', data.id);
+            if (err) {
+                if (err.message === 'ALREADY_MEMBER') {
+                    socket.emit('group-error', 'You are already a member of this group!');
+                } else {
+                    socket.emit('group-error', 'Join failed!');
+                }
+            } else {
+                socket.emit('group-joined', data.id);
+            }
         });
     },
     getGroups: (userId, callback) => {
