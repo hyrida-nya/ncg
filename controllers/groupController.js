@@ -2,6 +2,8 @@ const Room = require('../models/roomModel');
 const Member = require('../models/memberModel');
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('chat.db');
+const fs = require('fs');
+const path = require('path');
 
 const groupController = {
     createRoom: (socket, data, userId) => {
@@ -59,6 +61,28 @@ const groupController = {
                         socket.emit('group-settings-updated', 'Group settings updated!');
                         socket.nsp.emit('groups-updated');
                     }
+                });
+            } else {
+                socket.emit('group-error', 'Forbidden: Only owners/admins can change settings!');
+            }
+        });
+    }
+};
+
+module.exports = groupController;
+ed');
+                            
+                            // Cleanup old file
+                            if (data.avatarUrl && oldAvatar && oldAvatar !== '/default-group.png') {
+                                const oldPath = path.join('public', oldAvatar);
+                                if (fs.existsSync(oldPath)) {
+                                    fs.unlink(oldPath, (err) => {
+                                        if (err) console.error('Failed to delete old avatar:', err);
+                                    });
+                                }
+                            }
+                        }
+                    });
                 });
             } else {
                 socket.emit('group-error', 'Forbidden: Only owners/admins can change settings!');
