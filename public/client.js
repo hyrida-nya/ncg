@@ -151,7 +151,10 @@ document.addEventListener('DOMContentLoaded', () => {
 window.createNewGroup = function() {
     const name = document.getElementById('newRoomName').value.trim();
     const desc = document.getElementById('newRoomDesc').value.trim();
-    if (!name) return;
+    if (!name){
+        showToast("Group name can't be null");
+        return;
+    }
     socket.emit('create-room', { name, desc });
     document.getElementById('newRoomName').value = '';
     document.getElementById('newRoomDesc').value = '';
@@ -160,7 +163,10 @@ window.createNewGroup = function() {
 // UI: Join Group
 window.joinGroupById = function() {
     const id = document.getElementById('joinRoomId').value.trim();
-    if (!id) return;
+    if (!id){
+        showToast("Group id can't be null");
+        return;
+    }
     socket.emit('join-room-by-id', { id });
     document.getElementById('joinRoomId').value = '';
 }
